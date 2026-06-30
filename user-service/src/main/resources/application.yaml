@@ -1,3 +1,13 @@
 spring:
   application:
     name: user-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/user_db?createDatabaseIfNotExist=true
+    username: root
+    password: your_mysql_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
