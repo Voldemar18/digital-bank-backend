@@ -1,15 +1,19 @@
 package com.digitalbank.account.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Column;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "accounts")
@@ -21,18 +25,16 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    private BigDecimal balance;
+    private BigDecimal balance = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     private Currency currency;
 
     @Enumerated(EnumType.STRING)
-    private AccountStatus status;
+    private AccountStatus status = AccountStatus.ACTIVE;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnore
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt = OffsetDateTime.now();
 }
