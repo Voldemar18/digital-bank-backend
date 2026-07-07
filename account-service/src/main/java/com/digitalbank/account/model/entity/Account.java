@@ -1,4 +1,4 @@
-package com.digitalbank.account.model;
+package com.digitalbank.account.model.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
