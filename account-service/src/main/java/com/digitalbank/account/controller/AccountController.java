@@ -4,14 +4,18 @@ import com.digitalbank.account.mapper.account.AccountMapper;
 import com.digitalbank.account.model.dto.AccountRs;
 import com.digitalbank.account.model.dto.CreateAccountRq;
 import com.digitalbank.account.model.dto.TransferRq;
-import com.digitalbank.account.model.dto.TransferRs;
-import com.digitalbank.account.model.entity.Account;
 import com.digitalbank.account.model.entity.AccountStatus;
 import com.digitalbank.account.service.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -35,13 +39,8 @@ public class AccountController {
     }
 
     @PostMapping("/transfer")
-    public ResponseEntity<TransferRs> transferMoney(@Valid @RequestBody TransferRq request) {
-        accountService.moneyTransfer(
-                request.getFromAccountId(),
-                request.getToAccountId(),
-                request.getAmount()
-        );
-        return ResponseEntity.ok(new TransferRs("SUCCESS", "Transfer completed successfully"));
+    public void transferMoney(@Valid @RequestBody TransferRq request) {
+        accountService.moneyTransfer(request);
     }
 
 }

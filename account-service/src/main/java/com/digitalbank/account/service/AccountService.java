@@ -3,6 +3,7 @@ package com.digitalbank.account.service;
 import com.digitalbank.account.mapper.account.AccountMapper;
 import com.digitalbank.account.model.dto.AccountRs;
 import com.digitalbank.account.model.dto.CreateAccountRq;
+import com.digitalbank.account.model.dto.TransferRq;
 import com.digitalbank.account.model.entity.Account;
 import com.digitalbank.account.model.entity.AccountStatus;
 import com.digitalbank.account.repository.AccountRepository;
@@ -38,18 +39,22 @@ public class AccountService {
     }
 
     @Transactional
-    public void moneyTransfer(Long fromAccountId,Long toAccountId,BigDecimal amount) {
-        if(amount.compareTo(BigDecimal.ZERO)<=0){
-            throw new IllegalArgumentException("amount must be greater than zero");
-        }
-        Account fromAccount = accountRepository.findById(fromAccountId).orElseThrow(() -> new EntityNotFoundException("Sender account not found"));
-        Account toAccount = accountRepository.findById(fromAccountId).orElseThrow(() -> new EntityNotFoundException("Receiver account not found"));
+    public void moneyTransfer(TransferRq request) {
+        BigDecimal amount = request.getAmount();
 
-        if(fromAccount.getBalance().compareTo(amount)<0){
-            throw new IllegalArgumentException("amount must be greater than zero");
+        Account fromAccount = findAccountOrThrow(request.getFromAccountId(), "Sender account not found");
+        Account toAccount = findAccountOrThrow(request.getToAccountId(), "Receiver account not found");
+
+        if (fromAccount.getBalance().compareTo(amount) < 0) {
+            throw new IllegalArgumentException("Insufficient balance");
         }
+
         fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
         toAccount.setBalance(toAccount.getBalance().add(amount));
+    }
 
+    private Account findAccountOrThrow(Long accountId, String errorMessage) {
+        return accountRepository.findById(accountId)
+                .orElseThrow(() -> new EntityNotFoundException(errorMessage));
     }
 }

@@ -2,10 +2,13 @@ package com.digitalbank.account.model.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 
-@Data
+@Getter
+@Setter
 public class TransferRq {
     @NotNull(message = "Sender account ID is required")
     private Long fromAccountId;
