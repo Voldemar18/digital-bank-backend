@@ -21,7 +21,7 @@ import java.math.BigDecimal;
 public class AccountService {
     private final AccountRepository accountRepository;
     private final AccountMapper accountMapper;
-
+    private final CurrencyConverterService currencyConverterService;
 
     @Transactional
     public AccountRs createAccount(CreateAccountRq dto) {
@@ -49,8 +49,17 @@ public class AccountService {
             throw new IllegalArgumentException("Insufficient balance");
         }
 
-        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-        toAccount.setBalance(toAccount.getBalance().add(amount));
+        if (fromAccount.getCurrency() != toAccount.getCurrency()) {
+            BigDecimal convertedAmount = currencyConverterService.convert(amount, fromAccount.getCurrency(), toAccount.getCurrency());
+
+            fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
+
+            toAccount.setBalance(toAccount.getBalance().add(convertedAmount));
+
+        } else {
+            fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
+            toAccount.setBalance(toAccount.getBalance().add(amount));
+        }
     }
 
     private Account findAccountOrThrow(Long accountId, String errorMessage) {
