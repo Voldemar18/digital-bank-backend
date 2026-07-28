@@ -1,5 +1,6 @@
 package com.digitalbank.account.service;
 
+import com.digitalbank.account.exception.UnsupportedCurrencyException;
 import com.digitalbank.account.model.entity.Currency;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +12,7 @@ public class CurrencyConverterService {
         if (from.equals(to)) {
             return amount;
         }
+
         else if (from.equals(Currency.USD)) {
             switch (to) {
                 case EUR:
@@ -19,9 +21,10 @@ public class CurrencyConverterService {
                     return amount.multiply(BigDecimal.valueOf(475.07));
                 case RUB:
                     return amount.multiply(BigDecimal.valueOf(78.03));
-                default: throw new IllegalArgumentException("Unsupported target currency: " + to);
+                default: throw new UnsupportedCurrencyException("Unsupported target currency: " + to);
             }
         }
+
         else if (from.equals(Currency.EUR)) {
             switch (to) {
                 case USD:
@@ -30,9 +33,10 @@ public class CurrencyConverterService {
                     return amount.multiply(BigDecimal.valueOf(541.4));
                 case RUB:
                     return amount.multiply(BigDecimal.valueOf(88.89));
-                default: throw new IllegalArgumentException("Unsupported target currency: " + to);
+                default: throw new UnsupportedCurrencyException("Unsupported target currency: " + to);
             }
         }
+
         else if (from.equals(Currency.KZT)) {
             switch (to) {
                 case USD:
@@ -41,9 +45,10 @@ public class CurrencyConverterService {
                     return amount.multiply(BigDecimal.valueOf(0.001847));
                 case RUB:
                     return amount.multiply(BigDecimal.valueOf(0.1675));
-                default: throw new IllegalArgumentException("Unsupported target currency: " + to);
+                default: throw new UnsupportedCurrencyException("Unsupported target currency: " + to);
             }
         }
+
         else if (from.equals(Currency.RUB)) {
             switch (to) {
                 case USD:
@@ -54,10 +59,11 @@ public class CurrencyConverterService {
 
                 case KZT:
                     return amount.multiply(BigDecimal.valueOf(5.97));
-                default: throw new IllegalArgumentException("Unsupported target currency: " + to);
+                default: throw new UnsupportedCurrencyException("Unsupported target currency: " + to);
 
             }
         }
-        throw new IllegalArgumentException("Unsupported source currency: " + from);
+
+        throw new UnsupportedCurrencyException("Unsupported source currency: " + from);
     }
 }

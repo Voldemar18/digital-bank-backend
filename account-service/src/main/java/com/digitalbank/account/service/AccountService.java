@@ -1,5 +1,7 @@
 package com.digitalbank.account.service;
 
+import com.digitalbank.account.exception.AccountNotFoundException;
+import com.digitalbank.account.exception.InsufficientFundsException;
 import com.digitalbank.account.mapper.account.AccountMapper;
 import com.digitalbank.account.model.dto.AccountRs;
 import com.digitalbank.account.model.dto.CreateAccountRq;
@@ -7,7 +9,6 @@ import com.digitalbank.account.model.dto.TransferRq;
 import com.digitalbank.account.model.entity.Account;
 import com.digitalbank.account.model.entity.AccountStatus;
 import com.digitalbank.account.repository.AccountRepository;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +47,7 @@ public class AccountService {
         Account toAccount = findAccountOrThrow(request.getToAccountId(), "Receiver account not found");
 
         if (fromAccount.getBalance().compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient balance");
+            throw new InsufficientFundsException("Insufficient balance");
         }
 
         if (fromAccount.getCurrency() != toAccount.getCurrency()) {
@@ -64,6 +65,6 @@ public class AccountService {
 
     private Account findAccountOrThrow(Long accountId, String errorMessage) {
         return accountRepository.findById(accountId)
-                .orElseThrow(() -> new EntityNotFoundException(errorMessage));
+                .orElseThrow(() -> new AccountNotFoundException(errorMessage));
     }
 }
