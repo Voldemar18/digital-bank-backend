@@ -3,8 +3,10 @@ package com.digitalbank.account.service;
 import com.digitalbank.account.exception.AccountNotFoundException;
 import com.digitalbank.account.exception.InsufficientFundsException;
 import com.digitalbank.account.mapper.account.AccountMapper;
+import com.digitalbank.account.messaging.producer.KafkaProducerService;
 import com.digitalbank.account.model.dto.AccountRs;
 import com.digitalbank.account.model.dto.CreateAccountRq;
+import com.digitalbank.account.model.dto.TransactionEvent;
 import com.digitalbank.account.model.dto.TransferRq;
 import com.digitalbank.account.model.entity.Account;
 import com.digitalbank.account.model.entity.AccountStatus;
@@ -15,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 @Service
 @Slf4j
@@ -23,6 +26,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final AccountMapper accountMapper;
     private final CurrencyConverterService currencyConverterService;
+    private final KafkaProducerService kafkaProducerService;
 
     @Transactional
     public AccountRs createAccount(CreateAccountRq dto) {
@@ -61,6 +65,16 @@ public class AccountService {
             fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
             toAccount.setBalance(toAccount.getBalance().add(amount));
         }
+
+        TransactionEvent event = new TransactionEvent().builder()
+                .fromAccountId(fromAccount.getId())
+                .toAccountId(toAccount.getId())
+                .amount(amount)
+                .currency(fromAccount.getCurrency())
+                .date(OffsetDateTime.now())
+                .build();
+
+        kafkaProducerService.sendMessage(event);
     }
 
     private Account findAccountOrThrow(Long accountId, String errorMessage) {
