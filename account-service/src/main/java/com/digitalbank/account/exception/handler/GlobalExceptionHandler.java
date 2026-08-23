@@ -1,9 +1,6 @@
 package com.digitalbank.account.exception.handler;
 
-import com.digitalbank.account.exception.AccountFrozenException;
-import com.digitalbank.account.exception.AccountNotFoundException;
-import com.digitalbank.account.exception.InsufficientFundsException;
-import com.digitalbank.account.exception.UnsupportedCurrencyException;
+import com.digitalbank.account.exception.*;
 import com.digitalbank.account.exception.dto.ErrorRs;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -42,5 +39,11 @@ public class GlobalExceptionHandler {
         OffsetDateTime timestamp = OffsetDateTime.now();
         log.error("Exception trigger date: {}. Exception content: {}", timestamp, error.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorRs(timestamp, error.getMessage(), HttpStatus.BAD_REQUEST.value()));
+    }
+    @ExceptionHandler(PaymentSystemException.class)
+    public ResponseEntity<ErrorRs> handlePaymentSystemException(PaymentSystemException error) {
+        OffsetDateTime timestamp = OffsetDateTime.now();
+        log.error("Exception trigger date: {}. Exception content: {}", timestamp, error.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ErrorRs(timestamp, error.getMessage(), HttpStatus.SERVICE_UNAVAILABLE.value()));
     }
 }

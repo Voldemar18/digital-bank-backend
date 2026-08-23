@@ -1,9 +1,7 @@
 package com.digitalbank.account.controller;
 
 import com.digitalbank.account.mapper.account.AccountMapper;
-import com.digitalbank.account.model.dto.AccountRs;
-import com.digitalbank.account.model.dto.CreateAccountRq;
-import com.digitalbank.account.model.dto.TransferRq;
+import com.digitalbank.account.model.dto.*;
 import com.digitalbank.account.model.entity.AccountStatus;
 import com.digitalbank.account.service.AccountService;
 import jakarta.validation.Valid;
@@ -16,10 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
-
+import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/api/v1/accounts")
 @RequiredArgsConstructor
+@Slf4j
 public class AccountController {
     private final AccountService accountService;
     private final AccountMapper accountMapper;
@@ -42,5 +41,12 @@ public class AccountController {
     public void transferMoney(@Valid @RequestBody TransferRq request) {
         accountService.moneyTransfer(request);
     }
+    @PostMapping("/deposit")
+    public ResponseEntity<DepositRs> deposit(@Valid @RequestBody DepositRq request) {
+        log.info("Deposit request received: accountId={}, amount={}",
+                request.getAccountId(), request.getAmount());
 
+        DepositRs response = accountService.processDeposit(request);
+        return ResponseEntity.ok(response);
+    }
 }
