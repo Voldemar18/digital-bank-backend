@@ -2,9 +2,11 @@ package com.digitalbank.account.exception.handler;
 
 import com.digitalbank.account.exception.*;
 import com.digitalbank.account.exception.dto.ErrorRs;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -45,5 +47,24 @@ public class GlobalExceptionHandler {
         OffsetDateTime timestamp = OffsetDateTime.now();
         log.error("Exception trigger date: {}. Exception content: {}", timestamp, error.getMessage());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ErrorRs(timestamp, error.getMessage(), HttpStatus.SERVICE_UNAVAILABLE.value()));
+    }
+    @ExceptionHandler(ConstraintViolationException.class) //без нее будет выкидывать 500
+    public ResponseEntity<ErrorRs> handleConstraintViolationException(ConstraintViolationException error) {
+        OffsetDateTime timestamp = OffsetDateTime.now();
+        log.error("Validation error at {}. Content: {}", timestamp, error.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorRs(timestamp, error.getMessage(), HttpStatus.BAD_REQUEST.value()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorRs> handleMethodArgumentNotValidException(MethodArgumentNotValidException error) {
+        OffsetDateTime timestamp = OffsetDateTime.now();
+        String message = error.getBindingResult().getFieldErrors().stream()
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .reduce((a, b) -> a + "; " + b)
+                .orElse("Validation failed");
+        log.error("Validation error at {}. Content: {}", timestamp, message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorRs(timestamp, message, HttpStatus.BAD_REQUEST.value()));
     }
 }

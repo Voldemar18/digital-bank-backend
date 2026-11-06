@@ -17,6 +17,8 @@ import com.digitalbank.account.repository.AccountRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -132,5 +134,11 @@ public class AccountService {
         }
 
         return success;
+    }
+
+    public Page<Account> getAccountsByUserId(Long userId, Pageable pageable) {
+        log.info("Fetching accounts for userId: {}, page: {}, size: {}",
+                userId, pageable.getPageNumber(), pageable.getPageSize());
+        return accountRepository.findByUserId(userId, pageable);
     }
 }
