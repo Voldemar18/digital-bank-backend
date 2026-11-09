@@ -8,14 +8,16 @@ import com.digitalbank.account.service.AccountService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -23,12 +25,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Validated
 public class AccountController {
+
+    private static final String UUID_REGEX =
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";//проверка валидности UUID
+
     private final AccountService accountService;
     private final AccountMapper accountMapper;
 
-
     @PostMapping("/create")
-    public ResponseEntity<AccountRs> createAccount (@RequestBody CreateAccountRq dto) {
+    public ResponseEntity<AccountRs> createAccount(@Valid @RequestBody CreateAccountRq dto) {
         return ResponseEntity.ok(accountService.createAccount(dto));
     }
 
@@ -41,9 +46,21 @@ public class AccountController {
     }
 
     @PostMapping("/transfer")
-    public void transferMoney(@Valid @RequestBody TransferRq request) {
-        accountService.moneyTransfer(request);
+    public ResponseEntity<Void> transferMoney(
+            @RequestHeader("X-Idempotency-Key")
+            @NotBlank(message = "X-Idempotency-Key must not be blank")
+            @Pattern(regexp = UUID_REGEX, message = "X-Idempotency-Key must be a valid UUID")
+            String idempotencyKey,
+            @Valid @RequestBody TransferRq request) {
+
+        log.info("Transfer request received: from={}, to={}, amount={}, idempotencyKey={}",
+                request.getFromAccountId(), request.getToAccountId(),
+                request.getAmount(), idempotencyKey);
+
+        accountService.moneyTransfer(request, idempotencyKey);
+        return ResponseEntity.ok().build();
     }
+
     @PostMapping("/deposit")
     public ResponseEntity<DepositRs> deposit(@Valid @RequestBody DepositRq request) {
         log.info("Deposit request received: accountId={}, amount={}",
@@ -61,7 +78,7 @@ public class AccountController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String direction) {
 
-        Sort sort = Sort.by( //сортировка стабильного порядка
+        Sort sort = Sort.by(
                 "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC,
                 sortBy
         );

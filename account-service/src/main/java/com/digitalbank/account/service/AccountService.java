@@ -17,6 +17,7 @@ import com.digitalbank.account.repository.AccountRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class AccountService {
     private final AccountMapper accountMapper;
     private final CurrencyConverterService currencyConverterService;
     private final KafkaProducerService kafkaProducerService;
+    private final IdempotencyService idempotencyService;
 
     @Transactional
     public AccountRs createAccount(CreateAccountRq dto) {
@@ -49,7 +51,24 @@ public class AccountService {
     }
 
     @Transactional
-    public void moneyTransfer(TransferRq request) {
+    public void moneyTransfer(TransferRq request, String idempotencyKey) {
+        // 1. Проверка идемпотентности ДО любых списаний
+        boolean isDuplicate;
+        try {
+            isDuplicate = idempotencyService.checkAndStore(idempotencyKey);
+        } catch (DataIntegrityViolationException race) {
+            // Гонка: параллельный запрос с тем же ключом уже вставил запись.
+            // PK на ключе не дал вставить дубль — значит, перевод уже выполняется/выполнен.
+            log.warn("Race condition on idempotency key {}: {}", idempotencyKey, race.getMessage());
+            isDuplicate = true;
+        }
+
+        if (isDuplicate) {
+            log.info("Transfer skipped (duplicate idempotency key): {}", idempotencyKey);
+            return; // 200 OK, деньги не списываем, событие в Kafka не отправляем
+        }
+
+        // 2. Дальше — обычная логика перевода
         BigDecimal amount = request.getAmount();
 
         Account fromAccount = findAccountOrThrow(request.getFromAccountId(), "Sender account not found");
@@ -60,12 +79,11 @@ public class AccountService {
         }
 
         if (fromAccount.getCurrency() != toAccount.getCurrency()) {
-            BigDecimal convertedAmount = currencyConverterService.convert(amount, fromAccount.getCurrency(), toAccount.getCurrency());
+            BigDecimal convertedAmount = currencyConverterService.convert(
+                    amount, fromAccount.getCurrency(), toAccount.getCurrency());
 
             fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-
             toAccount.setBalance(toAccount.getBalance().add(convertedAmount));
-
         } else {
             fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
             toAccount.setBalance(toAccount.getBalance().add(amount));
