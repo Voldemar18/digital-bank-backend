@@ -1,9 +1,8 @@
 package com.digitalbank.account.service;
 
-import com.digitalbank.account.exception.AccountFrozenException;
-import com.digitalbank.account.exception.AccountNotFoundException;
-import com.digitalbank.account.exception.InsufficientFundsException;
-import com.digitalbank.account.exception.PaymentSystemException;
+import com.digitalbank.account.client.UserClient;
+import com.digitalbank.account.client.dto.UserStatusRs;
+import com.digitalbank.account.exception.*;
 import com.digitalbank.account.mapper.account.AccountMapper;
 import com.digitalbank.account.model.dto.*;
 import com.digitalbank.account.messaging.producer.KafkaProducerService;
@@ -14,6 +13,7 @@ import com.digitalbank.account.model.dto.TransferRq;
 import com.digitalbank.account.model.entity.Account;
 import com.digitalbank.account.model.entity.AccountStatus;
 import com.digitalbank.account.repository.AccountRepository;
+import feign.FeignException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,12 +34,46 @@ public class AccountService {
     private final CurrencyConverterService currencyConverterService;
     private final KafkaProducerService kafkaProducerService;
     private final IdempotencyService idempotencyService;
+    private final UserClient userClient;
 
     @Transactional
     public AccountRs createAccount(CreateAccountRq dto) {
+        // 1. Синхронная проверка пользователя через FeignClient
+        validateUser(dto.getUserId());
+
+        // 2. Создание счёта
         Account account = accountMapper.toEntity(dto);
         Account saveAccount = accountRepository.save(account);
         return accountMapper.toDto(saveAccount);
+    }
+
+    /**
+     * Проверяет пользователя в user-service.
+     * Бросает UserNotFoundException, если пользователя нет,
+     * и UserBlockedException, если он забанен/заблокирован.
+     */
+    private void validateUser(Long userId) {
+        UserStatusRs userStatus;
+        try {
+            userStatus = userClient.getUserStatus(userId);
+        } catch (FeignException.NotFound e) {
+            log.warn("User {} not found in user-service", userId);
+            throw new UserNotFoundException("User not found: " + userId);
+        } catch (FeignException e) {
+            log.error("User service call failed for userId={}. Status: {}", userId, e.status());
+            throw new UserServiceUnavailableException("User service unavailable");
+        }
+
+        if (userStatus == null) {
+            log.warn("User {} returned empty status from user-service", userId);
+            throw new UserNotFoundException("User not found: " + userId);
+        }
+
+        String status = userStatus.getStatus();
+        if ("BLOCKED".equalsIgnoreCase(status) || "BANNED".equalsIgnoreCase(status)) {
+            log.warn("User {} is blocked/banned, cannot create account", userId);
+            throw new UserBlockedException("User is blocked: " + userId);
+        }
     }
 
     @Transactional
